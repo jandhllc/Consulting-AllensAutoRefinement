@@ -1,0 +1,18 @@
+# Optional: a local Postgres for development. Not used for deployment (Netlify has no containers).
+#   docker compose up -d
+#   DATABASE_URL=postgres://aar:aar@localhost:5432/aar npm run migrate
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aar
+      POSTGRES_PASSWORD: aar
+      POSTGRES_DB: aar
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aar"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:

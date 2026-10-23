@@ -1,0 +1,122 @@
+# Infrastructure as code for Netlify. Everything about how the site builds, routes and caches
+# lives here and in each function's `export const config` (paths, methods, rate limits, schedules).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--no-audit --no-fund"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # sharp ships a native binary: keep it out of the bundle so the Linux build's binary is used.
+  external_node_modules = ["sharp"]
+
+# Deploy previews / branch deploys: never run migrations against the production DB from a preview.
+[context.deploy-preview.environment]
+  MIGRATE_ON_BUILD = "false"
+[context.branch-deploy.environment]
+  MIGRATE_ON_BUILD = "false"
+
+# ---------- redirects ----------
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 301
+[[redirects]]
+  from = "/home"
+  to = "/"
+  status = 301
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin"
+  status = 301
+[[redirects]]
+  from = "/sell-your-car"
+  to = "/sell"
+  status = 301
+[[redirects]]
+  from = "/service/*"
+  to = "/services/:splat"
+  status = 301
+
+# ---------- headers (static files; functions set the same set in src/lib/security.mjs) ----------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; manifest-src 'self'; upgrade-insecure-requests"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+# Fingerprinted assets (content hash in the filename) never change: cache for a year.
+# This includes the logo variants (/assets/img/logo-*) and the icons <head> links to (/assets/icons/*).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Unhashed well-known icon copies at the root (requested directly by browsers, iOS and crawlers):
+# favicon.ico and the manifest get a modest 1-day cache, the other root icons 1 week — never immutable.
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+    Content-Type = "image/x-icon"
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+    Content-Type = "application/manifest+json"
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/favicon-16x16.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/favicon-32x32.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/favicon-48x48.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/apple-touch-icon.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/android-chrome-192x192.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+[[headers]]
+  for = "/android-chrome-512x512.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+# HTML: always revalidate (Netlify's CDN invalidates static HTML on every deploy automatically).
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/thank-you"
+  [headers.values]
+    X-Robots-Tag = "noindex"

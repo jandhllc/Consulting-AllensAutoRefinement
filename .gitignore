@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.netlify/
+.env
+.env.*
+!.env.example
+.blobs/
+.pglite/
+src/generated/
+*.log
+*.zip
+.DS_Store
